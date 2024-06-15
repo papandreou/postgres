@@ -962,6 +962,16 @@ struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
+		{"enable_security_leakproof", PGC_USERSET, QUERY_TUNING_METHOD,
+			gettext_noop("Whether to require the LEAKPROOF flag for functions evaluated blabla"),
+			NULL,
+			GUC_EXPLAIN
+		},
+		&enable_security_leakproof,
+		true,
+		NULL, NULL, NULL
+	},
+	{
 		{"enable_presorted_aggregate", PGC_USERSET, QUERY_TUNING_METHOD,
 			gettext_noop("Enables the planner's ability to produce plans that "
 						 "provide presorted input for ORDER BY / DISTINCT aggregate "
