@@ -5358,7 +5358,7 @@ order_qual_clauses(PlannerInfo *root, List *clauses)
 			 * security level, which is not so great, but we can alleviate
 			 * that risk by applying the cost limit cutoff.
 			 */
-			if (rinfo->leakproof && items[i].cost < 10 * cpu_operator_cost)
+			if ((rinfo->leakproof || !enable_security_leakproof) && items[i].cost < 10 * cpu_operator_cost)
 				items[i].security_level = 0;
 			else
 				items[i].security_level = rinfo->security_level;

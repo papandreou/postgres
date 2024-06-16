@@ -23,6 +23,7 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/appendinfo.h"
+#include "optimizer/cost.h"
 #include "optimizer/clauses.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/pathnode.h"
@@ -142,7 +143,7 @@ process_equivalence(PlannerInfo *root,
 	Assert(restrictinfo->right_ec == NULL);
 
 	/* Reject if it is potentially postponable by security considerations */
-	if (restrictinfo->security_level > 0 && !restrictinfo->leakproof)
+	if (restrictinfo->security_level > 0 && !enable_security_leakproof && !restrictinfo->leakproof)
 		return false;
 
 	/* Extract info from given clause */

@@ -17,9 +17,9 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/clauses.h"
+#include "optimizer/cost.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/restrictinfo.h"
-
 
 static RestrictInfo *make_restrictinfo_internal(PlannerInfo *root,
 												Expr *clause,
@@ -436,7 +436,7 @@ restriction_is_securely_promotable(RestrictInfo *restrictinfo,
 	 * would need to go before this one, *or* if this one is leakproof.
 	 */
 	if (restrictinfo->security_level <= rel->baserestrict_min_security ||
-		restrictinfo->leakproof)
+		restrictinfo->leakproof || !enable_security_leakproof)
 		return true;
 	else
 		return false;
