@@ -1509,6 +1509,7 @@ pg_roles| SELECT pg_authid.rolname,
     '********'::text AS rolpassword,
     pg_authid.rolvaliduntil,
     pg_authid.rolbypassrls,
+    pg_authid.rolbypassleakproof,
     s.setconfig AS rolconfig,
     pg_authid.oid
    FROM (pg_authid
@@ -1746,6 +1747,7 @@ pg_shadow| SELECT pg_authid.rolname AS usename,
     pg_authid.rolsuper AS usesuper,
     pg_authid.rolreplication AS userepl,
     pg_authid.rolbypassrls AS usebypassrls,
+    pg_authid.rolbypassleakproof AS usebypassleakproof,
     pg_authid.rolpassword AS passwd,
     pg_authid.rolvaliduntil AS valuntil,
     s.setconfig AS useconfig
@@ -2685,6 +2687,7 @@ pg_user| SELECT usename,
     usesuper,
     userepl,
     usebypassrls,
+    usebypassleakproof,
     '********'::text AS passwd,
     valuntil,
     useconfig
