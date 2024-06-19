@@ -144,7 +144,7 @@ process_equivalence(PlannerInfo *root,
 	Assert(restrictinfo->right_ec == NULL);
 
 	/* Reject if it is potentially postponable by security considerations */
-	if (restrictinfo->security_level > 0 && !restrictinfo->leakproof && !has_bypassleakproof_privilege(GetUserId()))
+	if (restrictinfo->security_level > 0 && !(restrictinfo->leakproof || has_bypassleakproof_privilege(GetUserId())))
 		return false;
 
 	/* Extract info from given clause */
