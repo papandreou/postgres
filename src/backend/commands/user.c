@@ -149,6 +149,8 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	bool		canlogin = false;	/* Can this user login? */
 	bool		isreplication = false;	/* Is this a replication role? */
 	bool		bypassrls = false;	/* Is this a row security enabled role? */
+	bool		bypassleakproof = false;	/* Does it bypass leakproof
+											 * checks? */
 	int			connlimit = -1; /* maximum connections allowed */
 	List	   *addroleto = NIL;	/* roles to make this a member of */
 	List	   *rolemembers = NIL;	/* roles to be members of this role */
@@ -169,6 +171,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	DefElem    *dadminmembers = NULL;
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
+	DefElem    *dbypassLeakproof = NULL;
 	GrantRoleOptions popt;
 
 	/* The defaults can vary depending on the original statement type */
@@ -272,6 +275,12 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 				errorConflictingDefElem(defel, pstate);
 			dbypassRLS = defel;
 		}
+		else if (strcmp(defel->defname, "bypassleakproof") == 0)
+		{
+			if (dbypassLeakproof)
+				errorConflictingDefElem(defel, pstate);
+			dbypassLeakproof = defel;
+		}
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -309,6 +318,8 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	if (dbypassRLS)
 		bypassrls = boolVal(dbypassRLS->arg);
+	if (dbypassLeakproof)
+		bypassleakproof = boolVal(dbypassLeakproof->arg);
 
 	/* Check some permissions first */
 	if (!superuser_arg(currentUserId))
@@ -343,6 +354,13 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 					 errmsg("permission denied to create role"),
 					 errdetail("Only roles with the %s attribute may create roles with the %s attribute.",
 							   "BYPASSRLS", "BYPASSRLS")));
+
+		if (bypassleakproof && !has_bypassleakproof_privilege(currentUserId))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied to create role"),
+					 errdetail("Only roles with the %s attribute may create roles with the %s attribute.",
+							   "BYPASSLEAKPROOF", "BYPASSLEAKPROOF")));
 	}
 
 	/*
@@ -456,6 +474,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	new_record_nulls[Anum_pg_authid_rolvaliduntil - 1] = validUntil_null;
 
 	new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(bypassrls);
+	new_record[Anum_pg_authid_rolbypassleakproof - 1] = BoolGetDatum(bypassleakproof);
 
 	/*
 	 * pg_largeobject_metadata contains pg_authid.oid's, so we use the
@@ -644,6 +663,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	DefElem    *drolemembers = NULL;
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
+	DefElem    *dbypassLeakproof = NULL;
 	Oid			roleid;
 	Oid			currentUserId = GetUserId();
 	GrantRoleOptions popt;
@@ -723,6 +743,12 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 				errorConflictingDefElem(defel, pstate);
 			dbypassRLS = defel;
 		}
+		else if (strcmp(defel->defname, "bypassleakproof") == 0)
+		{
+			if (dbypassLeakproof)
+				errorConflictingDefElem(defel, pstate);
+			dbypassLeakproof = defel;
+		}
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -775,7 +801,7 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 	{
 		/* things an unprivileged user certainly can't do */
 		if (dinherit || dcreaterole || dcreatedb || dcanlogin || dconnlimit ||
-			dvalidUntil || disreplication || dbypassRLS)
+			dvalidUntil || disreplication || dbypassRLS || dbypassLeakproof)
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("permission denied to alter role"),
@@ -815,6 +841,12 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 					 errmsg("permission denied to alter role"),
 					 errdetail("Only roles with the %s attribute may change the %s attribute.",
 							   "BYPASSRLS", "BYPASSRLS")));
+		if (dbypassLeakproof && !has_bypassleakproof_privilege(currentUserId))
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied to alter role"),
+					 errdetail("Only roles with the %s attribute may change the %s attribute.",
+							   "BYPASSLEAKPROOF", "BYPASSLEAKPROOF")));
 	}
 
 	/* To add or drop members, you need ADMIN OPTION. */
@@ -952,6 +984,12 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 		new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(boolVal(dbypassRLS->arg));
 		new_record_repl[Anum_pg_authid_rolbypassrls - 1] = true;
 	}
+	if (dbypassLeakproof)
+	{
+		new_record[Anum_pg_authid_rolbypassleakproof - 1] = BoolGetDatum(boolVal(dbypassLeakproof->arg));
+		new_record_repl[Anum_pg_authid_rolbypassleakproof - 1] = true;
+	}
+
 
 	new_tuple = heap_modify_tuple(tuple, pg_authid_dsc, new_record,
 								  new_record_nulls, new_record_repl);

@@ -331,6 +331,26 @@ PostgreSQL documentation
      </varlistentry>
 
      <varlistentry>
+      <term><option>--bypassleakproof</option></term>
+      <listitem>
+       <para>
+        The new user will bypass the LEAKPROOF requirement for functions evaluated
+        in security sensitive contexts.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
+      <term><option>--no-bypassleakproof</option></term>
+      <listitem>
+       <para>
+        The new user will not bypass the LEAKPROOF requirement for functions evaluated
+        in security sensitive contexts.
+       </para>
+      </listitem>
+     </varlistentry>
+
+     <varlistentry>
       <term><option>--replication</option></term>
       <listitem>
        <para>

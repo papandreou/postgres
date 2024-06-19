@@ -32,6 +32,7 @@ ALTER ROLE <replaceable class="parameter">role_specification</replaceable> [ WIT
     | LOGIN | NOLOGIN
     | REPLICATION | NOREPLICATION
     | BYPASSRLS | NOBYPASSRLS
+    | BYPASSLEAKPROOF | NOBYPASSLEAKPROOF
     | CONNECTION LIMIT <replaceable class="parameter">connlimit</replaceable>
     | [ ENCRYPTED ] PASSWORD '<replaceable class="parameter">password</replaceable>' | PASSWORD NULL
     | VALID UNTIL '<replaceable class="parameter">timestamp</replaceable>'
@@ -77,9 +78,9 @@ ALTER ROLE { <replaceable class="parameter">role_specification</replaceable> | A
    non-replication roles for which they have been granted
    <literal>ADMIN OPTION</literal>. Non-superusers cannot change the
    <literal>SUPERUSER</literal> property and can change the
-   <literal>CREATEDB</literal>, <literal>REPLICATION</literal>, and
-   <literal>BYPASSRLS</literal> properties only if they possess the
-   corresponding property themselves.
+   <literal>CREATEDB</literal>, <literal>REPLICATION</literal>,
+   <literal>BYPASSRLS</literal>, and <literal>BYPASSLEAKPROOF</literal> properties
+   only if they possess the corresponding property themselves.
    Ordinary roles can only change their own password.
   </para>
 
@@ -178,6 +179,8 @@ ALTER ROLE { <replaceable class="parameter">role_specification</replaceable> | A
       <term><literal>NOREPLICATION</literal></term>
       <term><literal>BYPASSRLS</literal></term>
       <term><literal>NOBYPASSRLS</literal></term>
+      <term><literal>BYPASSLEAKPROOF</literal></term>
+      <term><literal>NOBYPASSLEAKPROOF</literal></term>
       <term><literal>CONNECTION LIMIT</literal> <replaceable class="parameter">connlimit</replaceable></term>
       <term>[ <literal>ENCRYPTED</literal> ] <literal>PASSWORD</literal> '<replaceable class="parameter">password</replaceable>'</term>
       <term><literal>PASSWORD NULL</literal></term>

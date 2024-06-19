@@ -3742,6 +3742,15 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 		appendPQExpBufferStr(&buf, "\n, r.rolbypassrls");
 	}
 
+	if (pset.sversion >= 99999)
+	{
+		/*
+		 * FIXME: When it has been assigned, set the right server_version
+		 * where rolbypassleakproof is available
+		 */
+		appendPQExpBufferStr(&buf, "\n, r.rolbypassleakproof");
+	}
+
 	appendPQExpBufferStr(&buf, "\nFROM pg_catalog.pg_roles r\n");
 
 	if (!showSystem && !pattern)
@@ -3798,6 +3807,14 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 		if (pset.sversion >= 90500)
 			if (strcmp(PQgetvalue(res, i, (verbose ? 10 : 9)), "t") == 0)
 				add_role_attribute(&buf, _("Bypass RLS"));
+
+		/*
+		 * FIXME: When it has been assigned, set the right server_version
+		 * where rolbypassleakproof is available
+		 */
+		if (pset.sversion >= 99999)
+			if (strcmp(PQgetvalue(res, i, (verbose ? 11 : 10)), "t") == 0)
+				add_role_attribute(&buf, _("Bypass LEAKPROOF"));
 
 		conns = atoi(PQgetvalue(res, i, 6));
 		if (conns >= 0)
