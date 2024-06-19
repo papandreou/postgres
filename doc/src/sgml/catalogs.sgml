@@ -1577,6 +1577,16 @@
 
      <row>
       <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>rolbypassleakproof</structfield> <type>bool</type>
+      </para>
+      <para>
+       Role bypasses LEAKPROOF requirement for functions evaluated in
+       security sensitive contexts.
+      </para></entry>
+     </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
        <structfield>rolconnlimit</structfield> <type>int4</type>
       </para>
       <para>

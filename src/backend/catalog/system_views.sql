@@ -27,6 +27,7 @@ CREATE VIEW pg_roles AS
         '********'::text as rolpassword,
         rolvaliduntil,
         rolbypassrls,
+        rolbypassleakproof,
         setconfig as rolconfig,
         pg_authid.oid
     FROM pg_authid LEFT JOIN pg_db_role_setting s
@@ -40,6 +41,7 @@ CREATE VIEW pg_shadow AS
         rolsuper AS usesuper,
         rolreplication AS userepl,
         rolbypassrls AS usebypassrls,
+        rolbypassleakproof AS usebypassleakproof,
         rolpassword AS passwd,
         rolvaliduntil AS valuntil,
         setconfig AS useconfig
@@ -65,6 +67,7 @@ CREATE VIEW pg_user AS
         usesuper,
         userepl,
         usebypassrls,
+        usebypassleakproof,
         '********'::text as passwd,
         valuntil,
         useconfig

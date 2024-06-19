@@ -763,6 +763,7 @@ dumpRoles(PGconn *conn)
 				i_rolvaliduntil,
 				i_rolreplication,
 				i_rolbypassrls,
+				i_rolbypassleakproof,
 				i_rolcomment,
 				i_is_current_user;
 	int			i;
@@ -771,6 +772,18 @@ dumpRoles(PGconn *conn)
 	 * Notes: rolconfig is dumped later, and pg_authid must be used for
 	 * extracting rolcomment regardless of role_catalog.
 	 */
+	if (server_version >= 99999)
+		// FIXME: When it has been assigned, set the right server_version where rolbypassleakproof is available
+		printfPQExpBuffer(buf,
+						  "SELECT oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
+						  "rolvaliduntil, rolreplication, rolbypassrls, rolbypassleakproof, "
+						  "pg_catalog.shobj_description(oid, 'pg_authid') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM %s "
+						  "WHERE rolname !~ '^pg_' "
+						  "ORDER BY 2", role_catalog);
 	if (server_version >= 90600)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
@@ -818,6 +831,7 @@ dumpRoles(PGconn *conn)
 	i_rolvaliduntil = PQfnumber(res, "rolvaliduntil");
 	i_rolreplication = PQfnumber(res, "rolreplication");
 	i_rolbypassrls = PQfnumber(res, "rolbypassrls");
+	i_rolbypassleakproof = PQfnumber(res, "rolbypassleakproof");
 	i_rolcomment = PQfnumber(res, "rolcomment");
 	i_is_current_user = PQfnumber(res, "is_current_user");
 
@@ -896,6 +910,11 @@ dumpRoles(PGconn *conn)
 			appendPQExpBufferStr(buf, " BYPASSRLS");
 		else
 			appendPQExpBufferStr(buf, " NOBYPASSRLS");
+
+		if (strcmp(PQgetvalue(res, i, i_rolbypassleakproof), "t") == 0)
+			appendPQExpBufferStr(buf, " BYPASSLEAKPROOF");
+		else
+			appendPQExpBufferStr(buf, " NOBYPASSLEAKPROOF");
 
 		if (strcmp(PQgetvalue(res, i, i_rolconnlimit), "-1") != 0)
 			appendPQExpBuffer(buf, " CONNECTION LIMIT %s",

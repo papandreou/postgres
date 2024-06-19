@@ -30,21 +30,22 @@
  */
 CATALOG(pg_authid,1260,AuthIdRelationId) BKI_SHARED_RELATION BKI_ROWTYPE_OID(2842,AuthIdRelation_Rowtype_Id) BKI_SCHEMA_MACRO
 {
-	Oid			oid;			/* oid */
-	NameData	rolname;		/* name of role */
-	bool		rolsuper;		/* read this field via superuser() only! */
-	bool		rolinherit;		/* inherit privileges from other roles? */
-	bool		rolcreaterole;	/* allowed to create more roles? */
-	bool		rolcreatedb;	/* allowed to create databases? */
-	bool		rolcanlogin;	/* allowed to log in as session user? */
-	bool		rolreplication; /* role used for streaming replication */
-	bool		rolbypassrls;	/* bypasses row-level security? */
-	int32		rolconnlimit;	/* max connections allowed (-1=no limit) */
+	Oid			oid;				/* oid */
+	NameData	rolname;			/* name of role */
+	bool		rolsuper;			/* read this field via superuser() only! */
+	bool		rolinherit;			/* inherit privileges from other roles? */
+	bool		rolcreaterole;		/* allowed to create more roles? */
+	bool		rolcreatedb;		/* allowed to create databases? */
+	bool		rolcanlogin;		/* allowed to log in as session user? */
+	bool		rolreplication; 	/* role used for streaming replication */
+	bool		rolbypassrls;		/* bypasses row-level security? */
+	bool		rolbypassleakproof;	/* bypasses leakproof checks? */
+	int32		rolconnlimit;		/* max connections allowed (-1=no limit) */
 
 	/* remaining fields may be null; use heap_getattr to read them! */
-#ifdef CATALOG_VARLEN			/* variable-length fields start here */
-	text		rolpassword;	/* password, if any */
-	timestamptz rolvaliduntil;	/* password expiration time, if any */
+#ifdef CATALOG_VARLEN				/* variable-length fields start here */
+	text		rolpassword;		/* password, if any */
+	timestamptz rolvaliduntil;		/* password expiration time, if any */
 #endif
 } FormData_pg_authid;
 

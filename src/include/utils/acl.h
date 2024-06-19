@@ -286,5 +286,6 @@ extern void RemoveRoleFromInitPriv(Oid roleid,
 extern bool object_ownercheck(Oid classid, Oid objectid, Oid roleid);
 extern bool has_createrole_privilege(Oid roleid);
 extern bool has_bypassrls_privilege(Oid roleid);
+extern bool has_bypassleakproof_privilege(Oid roleid);
 
 #endif							/* ACL_H */

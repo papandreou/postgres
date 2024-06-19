@@ -2749,6 +2749,17 @@ SELECT * FROM pg_locks pl LEFT JOIN pg_prepared_xacts ppx
       </para></entry>
      </row>
 
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>rolbypassleakproof</structfield> <type>bool</type>
+      </para>
+      <para>
+       Role bypasses the LEAKPROOF requirement for functions evaluated in
+       security sensitive contexts.
+      </para></entry>
+     </row>
+
      <row>
       <entry role="catalog_table_entry"><para role="column_definition">
        <structfield>rolconfig</structfield> <type>text[]</type>
@@ -3568,6 +3579,16 @@ SELECT * FROM pg_locks pl LEFT JOIN pg_prepared_xacts ppx
       <para>
        User bypasses every row-level security policy, see
        <xref linkend="ddl-rowsecurity"/> for more information.
+      </para></entry>
+     </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>usebypassleakproof</structfield> <type>bool</type>
+      </para>
+      <para>
+       Role bypasses the LEAKPROOF requirement for functions evaluated in
+       security sensitive contexts.
       </para></entry>
      </row>
 
@@ -4743,6 +4764,16 @@ SELECT * FROM pg_locks pl LEFT JOIN pg_prepared_xacts ppx
       <para>
        User bypasses every row-level security policy, see
        <xref linkend="ddl-rowsecurity"/> for more information.
+      </para></entry>
+     </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>usebypassleakproof</structfield> <type>bool</type>
+      </para>
+      <para>
+       Role bypasses the LEAKPROOF requirement for functions evaluated in
+       security sensitive contexts.
       </para></entry>
      </row>
 

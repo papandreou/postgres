@@ -57,6 +57,8 @@ main(int argc, char *argv[])
 		{"interactive", no_argument, NULL, 3},
 		{"bypassrls", no_argument, NULL, 4},
 		{"no-bypassrls", no_argument, NULL, 5},
+		{"bypassleakproof", no_argument, NULL, 6},
+		{"no-bypassleakproof", no_argument, NULL, 7},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -86,7 +88,8 @@ main(int argc, char *argv[])
 				inherit = TRI_DEFAULT,
 				login = TRI_DEFAULT,
 				replication = TRI_DEFAULT,
-				bypassrls = TRI_DEFAULT;
+				bypassrls = TRI_DEFAULT,
+				bypassleakproof = TRI_DEFAULT;
 
 	PQExpBufferData sql;
 
@@ -189,6 +192,12 @@ main(int argc, char *argv[])
 				break;
 			case 5:
 				bypassrls = TRI_NO;
+				break;
+			case 6:
+				bypassleakproof = TRI_YES;
+				break;
+			case 7:
+				bypassleakproof = TRI_NO;
 				break;
 			default:
 				/* getopt_long already emitted a complaint */
@@ -339,6 +348,10 @@ main(int argc, char *argv[])
 		appendPQExpBufferStr(&sql, " BYPASSRLS");
 	if (bypassrls == TRI_NO)
 		appendPQExpBufferStr(&sql, " NOBYPASSRLS");
+	if (bypassleakproof == TRI_YES)
+		appendPQExpBufferStr(&sql, " BYPASSLEAKPROOF");
+	if (bypassleakproof == TRI_NO)
+		appendPQExpBufferStr(&sql, " NOBYPASSLEAKPROOF");
 	if (conn_limit >= -1)
 		appendPQExpBuffer(&sql, " CONNECTION LIMIT %d", conn_limit);
 	if (pwexpiry != NULL)
@@ -441,6 +454,9 @@ help(const char *progname)
 			 "                            than using defaults\n"));
 	printf(_("  --bypassrls               role can bypass row-level security (RLS) policy\n"));
 	printf(_("  --no-bypassrls            role cannot bypass row-level security (RLS) policy\n"
+			 "                            (default)\n"));
+	printf(_("  --bypassleakproof         role can bypass leakproof security requirements\n"));
+	printf(_("  --no-bypassleakproof      role cannot bypass leakproof security requirements\n"
 			 "                            (default)\n"));
 	printf(_("  --replication             role can initiate replication\n"));
 	printf(_("  --no-replication          role cannot initiate replication (default)\n"));
