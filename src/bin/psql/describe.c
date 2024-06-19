@@ -3708,6 +3708,11 @@ describeRoles(const char *pattern, bool verbose, bool showSystem)
 			if (strcmp(PQgetvalue(res, i, (verbose ? 10 : 9)), "t") == 0)
 				add_role_attribute(&buf, _("Bypass RLS"));
 
+		// FIXME: When it has been assigned, set the right server_version where rolbypassleakproof is available
+		if (pset.sversion >= 99999)
+			if (strcmp(PQgetvalue(res, i, (verbose ? 11 : 10)), "t") == 0)
+				add_role_attribute(&buf, _("Bypass LEAKPROOF"));
+
 		conns = atoi(PQgetvalue(res, i, 6));
 		if (conns >= 0)
 		{
