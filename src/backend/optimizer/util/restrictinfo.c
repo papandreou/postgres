@@ -19,7 +19,8 @@
 #include "optimizer/clauses.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/restrictinfo.h"
-
+#include "utils/acl.h"
+#include "miscadmin.h"
 
 static RestrictInfo *make_restrictinfo_internal(PlannerInfo *root,
 												Expr *clause,
@@ -436,7 +437,7 @@ restriction_is_securely_promotable(RestrictInfo *restrictinfo,
 	 * would need to go before this one, *or* if this one is leakproof.
 	 */
 	if (restrictinfo->security_level <= rel->baserestrict_min_security ||
-		restrictinfo->leakproof)
+		restrictinfo->leakproof || has_bypassleakproof_privilege(GetUserId()))
 		return true;
 	else
 		return false;
