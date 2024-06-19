@@ -41,9 +41,8 @@
 #include "parser/parse_clause.h"
 #include "parser/parsetree.h"
 #include "partitioning/partprune.h"
-#include "utils/acl.h"
 #include "utils/lsyscache.h"
-#include "miscadmin.h"
+
 
 /*
  * Flag bits that can appear in the flags argument of create_plan_recurse().
@@ -5359,8 +5358,7 @@ order_qual_clauses(PlannerInfo *root, List *clauses)
 			 * security level, which is not so great, but we can alleviate
 			 * that risk by applying the cost limit cutoff.
 			 */
-			if ((rinfo->leakproof || has_bypassleakproof_privilege(GetUserId())) &&
-				items[i].cost < 10 * cpu_operator_cost)
+			if (rinfo->leakproof && items[i].cost < 10 * cpu_operator_cost)
 				items[i].security_level = 0;
 			else
 				items[i].security_level = rinfo->security_level;
