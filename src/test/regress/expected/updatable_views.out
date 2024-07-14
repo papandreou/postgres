@@ -2931,6 +2931,9 @@ SELECT table_name, column_name, is_updatable
  rw_view1   | person      | YES
 (1 row)
 
+CREATE USER regress_view_user4 NOBYPASSLEAKPROOF;
+GRANT ALL ON rw_view1 TO regress_view_user4;
+SET SESSION AUTHORIZATION regress_view_user4;
 SELECT * FROM rw_view1 WHERE snoop(person);
 NOTICE:  snooped value: Tom
 NOTICE:  snooped value: Harry
@@ -2991,6 +2994,7 @@ MERGE INTO rw_view1 t
                ->  Values Scan on "*VALUES*"
 (7 rows)
 
+RESET SESSION AUTHORIZATION;
 -- security barrier view on top of security barrier view
 CREATE VIEW rw_view2 WITH (security_barrier = true) AS
   SELECT * FROM rw_view1 WHERE snoop(person);
@@ -3019,6 +3023,9 @@ SELECT table_name, column_name, is_updatable
  rw_view2   | person      | YES
 (1 row)
 
+CREATE USER regress_view_user5 NOBYPASSLEAKPROOF;
+GRANT ALL ON rw_view2 TO regress_view_user5;
+SET SESSION AUTHORIZATION regress_view_user5;
 SELECT * FROM rw_view2 WHERE snoop(person);
 NOTICE:  snooped value: Tom
 NOTICE:  snooped value: Tom
@@ -3088,6 +3095,7 @@ MERGE INTO rw_view2 t
          ->  Values Scan on "*VALUES*"
 (6 rows)
 
+RESET SESSION AUTHORIZATION;
 DROP TABLE base_tbl CASCADE;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to view rw_view1
@@ -3182,6 +3190,10 @@ CREATE VIEW v1 WITH (security_barrier=true) AS
 SELECT *, (SELECT d FROM t11 WHERE t11.a = t1.a LIMIT 1) AS d
 FROM t1
 WHERE a > 5 AND EXISTS(SELECT 1 FROM t12 WHERE t12.a = t1.a);
+CREATE USER regress_view_user6 NOBYPASSLEAKPROOF;
+GRANT ALL ON t1 TO regress_view_user6;
+GRANT ALL ON v1 TO regress_view_user6;
+SET SESSION AUTHORIZATION regress_view_user6;
 SELECT * FROM v1 WHERE a=3; -- should not see anything
  a | b | c | d 
 ---+---+---+---
@@ -3339,6 +3351,7 @@ TABLE t1; -- verify all a<=5 are intact
  5 | 5 | t111
 (20 rows)
 
+RESET SESSION AUTHORIZATION;
 DROP TABLE t1, t11, t12, t111 CASCADE;
 NOTICE:  drop cascades to view v1
 DROP FUNCTION snoop(anyelement);

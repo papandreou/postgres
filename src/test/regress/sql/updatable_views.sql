@@ -1517,7 +1517,12 @@ SELECT table_name, column_name, is_updatable
  WHERE table_name = 'rw_view1'
  ORDER BY ordinal_position;
 
+CREATE USER regress_view_user4 NOBYPASSLEAKPROOF;
+GRANT ALL ON rw_view1 TO regress_view_user4;
+SET SESSION AUTHORIZATION regress_view_user4;
+
 SELECT * FROM rw_view1 WHERE snoop(person);
+
 UPDATE rw_view1 SET person=person WHERE snoop(person);
 DELETE FROM rw_view1 WHERE NOT snoop(person);
 MERGE INTO rw_view1 t
@@ -1531,6 +1536,7 @@ EXPLAIN (costs off)
 MERGE INTO rw_view1 t
   USING (VALUES ('Tom'), ('Dick'), ('Harry')) AS v(person) ON t.person = v.person
   WHEN MATCHED AND snoop(t.person) THEN UPDATE SET person = v.person;
+RESET SESSION AUTHORIZATION;
 
 -- security barrier view on top of security barrier view
 
@@ -1550,7 +1556,12 @@ SELECT table_name, column_name, is_updatable
  WHERE table_name = 'rw_view2'
  ORDER BY ordinal_position;
 
+CREATE USER regress_view_user5 NOBYPASSLEAKPROOF;
+GRANT ALL ON rw_view2 TO regress_view_user5;
+SET SESSION AUTHORIZATION regress_view_user5;
+
 SELECT * FROM rw_view2 WHERE snoop(person);
+
 UPDATE rw_view2 SET person=person WHERE snoop(person);
 DELETE FROM rw_view2 WHERE NOT snoop(person);
 MERGE INTO rw_view2 t
@@ -1564,6 +1575,8 @@ EXPLAIN (costs off)
 MERGE INTO rw_view2 t
   USING (VALUES ('Tom'), ('Dick'), ('Harry')) AS v(person) ON t.person = v.person
   WHEN MATCHED AND snoop(t.person) THEN UPDATE SET person = v.person;
+
+RESET SESSION AUTHORIZATION;
 
 DROP TABLE base_tbl CASCADE;
 
@@ -1626,6 +1639,11 @@ SELECT *, (SELECT d FROM t11 WHERE t11.a = t1.a LIMIT 1) AS d
 FROM t1
 WHERE a > 5 AND EXISTS(SELECT 1 FROM t12 WHERE t12.a = t1.a);
 
+CREATE USER regress_view_user6 NOBYPASSLEAKPROOF;
+GRANT ALL ON t1 TO regress_view_user6;
+GRANT ALL ON v1 TO regress_view_user6;
+SET SESSION AUTHORIZATION regress_view_user6;
+
 SELECT * FROM v1 WHERE a=3; -- should not see anything
 SELECT * FROM v1 WHERE a=8;
 
@@ -1645,6 +1663,8 @@ SELECT * FROM v1 WHERE b=8;
 DELETE FROM v1 WHERE snoop(a) AND leakproof(a); -- should not delete everything, just where a>5
 
 TABLE t1; -- verify all a<=5 are intact
+
+RESET SESSION AUTHORIZATION;
 
 DROP TABLE t1, t11, t12, t111 CASCADE;
 DROP FUNCTION snoop(anyelement);
