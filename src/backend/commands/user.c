@@ -742,6 +742,12 @@ AlterRole(ParseState *pstate, AlterRoleStmt *stmt)
 				errorConflictingDefElem(defel, pstate);
 			dbypassRLS = defel;
 		}
+		else if (strcmp(defel->defname, "bypassleakproof") == 0)
+		{
+			if (dbypassLeakproof)
+				errorConflictingDefElem(defel, pstate);
+			dbypassLeakproof = defel;
+		}
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
