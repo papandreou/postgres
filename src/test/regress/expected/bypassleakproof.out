@@ -1,0 +1,55 @@
+-- BYPASSLEAKPROOF flag
+CREATE TYPE foo_or_bar_enum AS ENUM('foo', 'bar');
+CREATE TABLE base_tbl (tenant_id int, foo_or_bar foo_or_bar_enum);
+ALTER TABLE base_tbl ENABLE ROW LEVEL SECURITY;
+INSERT INTO base_tbl(tenant_id, foo_or_bar)
+SELECT 1, 'foo' FROM generate_series(1, 1000) AS n;
+INSERT INTO base_tbl(tenant_id, foo_or_bar)
+SELECT 2, 'foo' FROM generate_series(1, 1000) AS n;
+INSERT INTO base_tbl(tenant_id, foo_or_bar)
+VALUES(2, 'bar');
+CREATE FUNCTION is_bar(val foo_or_bar_enum) RETURNS boolean AS $$ SELECT val = 'bar'; $$ LANGUAGE SQL IMMUTABLE;
+CREATE INDEX ON base_tbl(tenant_id, (is_bar(foo_or_bar)));
+ANALYZE base_tbl;
+CREATE USER regress_bypassleakproof_nobypassleakproof_user NOBYPASSLEAKPROOF;
+CREATE USER regress_bypassleakproof_bypassleakproof_user BYPASSLEAKPROOF;
+GRANT SELECT ON base_tbl TO regress_bypassleakproof_nobypassleakproof_user;
+GRANT SELECT ON base_tbl TO regress_bypassleakproof_bypassleakproof_user;
+-- Check that the flag gets set correctly:
+SELECT rolname, rolbypassleakproof FROM pg_catalog.pg_roles
+WHERE rolname LIKE 'regress_bypassleakproof_%'
+ORDER BY rolname;
+                    rolname                     | rolbypassleakproof 
+------------------------------------------------+--------------------
+ regress_bypassleakproof_bypassleakproof_user   | t
+ regress_bypassleakproof_nobypassleakproof_user | f
+(2 rows)
+
+CREATE POLICY only_tenant_2 ON base_tbl FOR ALL
+TO regress_bypassleakproof_nobypassleakproof_user, regress_bypassleakproof_bypassleakproof_user
+USING (tenant_id = 2);
+SET SESSION AUTHORIZATION regress_bypassleakproof_nobypassleakproof_user;
+EXPLAIN (verbose, costs off) SELECT * FROM base_tbl WHERE is_bar(foo_or_bar);
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
+ Seq Scan on public.base_tbl
+   Output: tenant_id, foo_or_bar
+   Filter: ((base_tbl.tenant_id = 2) AND (base_tbl.foo_or_bar = 'bar'::foo_or_bar_enum))
+(3 rows)
+
+RESET SESSION AUTHORIZATION;
+SET SESSION AUTHORIZATION regress_bypassleakproof_bypassleakproof_user;
+EXPLAIN (verbose, costs off) SELECT * FROM base_tbl WHERE is_bar(foo_or_bar);
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Index Scan using base_tbl_tenant_id_is_bar_idx on public.base_tbl
+   Output: tenant_id, foo_or_bar
+   Index Cond: ((base_tbl.tenant_id = 2) AND ((base_tbl.foo_or_bar = 'bar'::foo_or_bar_enum) = true))
+(3 rows)
+
+RESET SESSION AUTHORIZATION;
+DROP TABLE base_tbl CASCADE;
+DROP USER regress_bypassleakproof_nobypassleakproof_user;
+DROP USER regress_bypassleakproof_bypassleakproof_user;
+DROP FUNCTION is_bar;
+DROP TYPE foo_or_bar_enum;
