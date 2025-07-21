@@ -23,6 +23,7 @@ typedef struct RowSecurityPolicy
 	char		polcmd;			/* Type of command policy is for */
 	ArrayType  *roles;			/* Array of roles policy is for */
 	bool		permissive;		/* restrictive or permissive policy */
+	bool		bypassleakproof;
 	Expr	   *qual;			/* Expression to filter rows */
 	Expr	   *with_check_qual;	/* Expression to limit rows allowed */
 	bool		hassublinks;	/* If either expression has sublinks */
