@@ -45,6 +45,7 @@ extern PGDLLIMPORT row_security_policy_hook_type row_security_policy_hook_restri
 extern void get_row_security_policies(Query *root,
 									  RangeTblEntry *rte, int rt_index,
 									  List **securityQuals, List **withCheckOptions,
+									  List **normalQuals,
 									  bool *hasRowSecurity, bool *hasSubLinks);
 
 #endif							/* ROWSECURITY_H */

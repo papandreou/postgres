@@ -27,6 +27,7 @@ ALTER POLICY <replaceable class="parameter">name</replaceable> ON <replaceable c
     [ TO { <replaceable class="parameter">role_name</replaceable> | PUBLIC | CURRENT_ROLE | CURRENT_USER | SESSION_USER } [, ...] ]
     [ USING ( <replaceable class="parameter">using_expression</replaceable> ) ]
     [ WITH CHECK ( <replaceable class="parameter">check_expression</replaceable> ) ]
+    [ BYPASSLEAKPROOF | NOBYPASSLEAKPROOF ]
 </synopsis>
  </refsynopsisdiv>
 
@@ -115,6 +116,17 @@ ALTER POLICY <replaceable class="parameter">name</replaceable> ON <replaceable c
     <listitem>
      <para>
       The <literal>WITH CHECK</literal> expression for the policy.
+      See <xref linkend="sql-createpolicy"/> for details.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><literal>BYPASSLEAKPROOF</literal></term>
+    <term><literal>NOBYPASSLEAKPROOF</literal></term>
+    <listitem>
+     <para>
+      These clauses alter whether the policy bypasses leakproof requirements.
       See <xref linkend="sql-createpolicy"/> for details.
      </para>
     </listitem>

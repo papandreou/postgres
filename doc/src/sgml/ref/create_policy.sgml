@@ -27,6 +27,7 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
     [ TO { <replaceable class="parameter">role_name</replaceable> | PUBLIC | CURRENT_ROLE | CURRENT_USER | SESSION_USER } [, ...] ]
     [ USING ( <replaceable class="parameter">using_expression</replaceable> ) ]
     [ WITH CHECK ( <replaceable class="parameter">check_expression</replaceable> ) ]
+    [ BYPASSLEAKPROOF ]
 </synopsis>
  </refsynopsisdiv>
 
@@ -215,6 +216,25 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
       the <replaceable class="parameter">check_expression</replaceable> is
       evaluated against the proposed new contents of the row, not the
       original contents.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><literal>BYPASSLEAKPROOF</literal></term>
+    <listitem>
+     <para>
+      If specified, this policy's USING expression will be treated as a regular
+      WHERE clause rather than a security barrier. This allows the optimizer to
+      use non-leakproof functions and operators when processing queries that
+      involve this policy, potentially improving performance by enabling
+      index scans and other optimizations.
+     </para>
+     <para>
+      <emphasis>Warning:</emphasis> This option should only be used when you trust
+      the functions and operators in your queries not to leak information about
+      rows that should be filtered out by this policy. Using this option
+      inappropriately may allow information disclosure.
      </para>
     </listitem>
    </varlistentry>

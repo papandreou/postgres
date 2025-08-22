@@ -138,13 +138,13 @@ Policies:
       USING (((cid <> 44) AND (cid < 50)))
 
 SELECT * FROM pg_policies WHERE schemaname = 'regress_rls_schema' AND tablename = 'document' ORDER BY policyname;
-     schemaname     | tablename | policyname | permissive  |       roles        | cmd |                    qual                    | with_check 
---------------------+-----------+------------+-------------+--------------------+-----+--------------------------------------------+------------
- regress_rls_schema | document  | p1         | PERMISSIVE  | {public}           | ALL | (dlevel <= ( SELECT uaccount.seclv        +| 
-                    |           |            |             |                    |     |    FROM uaccount                          +| 
-                    |           |            |             |                    |     |   WHERE (uaccount.pguser = CURRENT_USER))) | 
- regress_rls_schema | document  | p1r        | RESTRICTIVE | {regress_rls_dave} | ALL | (cid <> 44)                                | 
- regress_rls_schema | document  | p2r        | RESTRICTIVE | {regress_rls_dave} | ALL | ((cid <> 44) AND (cid < 50))               | 
+     schemaname     | tablename | policyname | permissive  |       roles        | cmd |                    qual                    | with_check | bypassleakproof 
+--------------------+-----------+------------+-------------+--------------------+-----+--------------------------------------------+------------+-----------------
+ regress_rls_schema | document  | p1         | PERMISSIVE  | {public}           | ALL | (dlevel <= ( SELECT uaccount.seclv        +|            | f
+                    |           |            |             |                    |     |    FROM uaccount                          +|            | 
+                    |           |            |             |                    |     |   WHERE (uaccount.pguser = CURRENT_USER))) |            | 
+ regress_rls_schema | document  | p1r        | RESTRICTIVE | {regress_rls_dave} | ALL | (cid <> 44)                                |            | f
+ regress_rls_schema | document  | p2r        | RESTRICTIVE | {regress_rls_dave} | ALL | ((cid <> 44) AND (cid < 50))               |            | f
 (3 rows)
 
 -- viewpoint from regress_rls_bob
@@ -962,12 +962,12 @@ Partitions: part_document_fiction FOR VALUES FROM (11) TO (12),
             part_document_satire FOR VALUES FROM (55) TO (56)
 
 SELECT * FROM pg_policies WHERE schemaname = 'regress_rls_schema' AND tablename like '%part_document%' ORDER BY policyname;
-     schemaname     |   tablename   | policyname | permissive  |       roles        | cmd |                    qual                    | with_check 
---------------------+---------------+------------+-------------+--------------------+-----+--------------------------------------------+------------
- regress_rls_schema | part_document | pp1        | PERMISSIVE  | {public}           | ALL | (dlevel <= ( SELECT uaccount.seclv        +| 
-                    |               |            |             |                    |     |    FROM uaccount                          +| 
-                    |               |            |             |                    |     |   WHERE (uaccount.pguser = CURRENT_USER))) | 
- regress_rls_schema | part_document | pp1r       | RESTRICTIVE | {regress_rls_dave} | ALL | (cid < 55)                                 | 
+     schemaname     |   tablename   | policyname | permissive  |       roles        | cmd |                    qual                    | with_check | bypassleakproof 
+--------------------+---------------+------------+-------------+--------------------+-----+--------------------------------------------+------------+-----------------
+ regress_rls_schema | part_document | pp1        | PERMISSIVE  | {public}           | ALL | (dlevel <= ( SELECT uaccount.seclv        +|            | f
+                    |               |            |             |                    |     |    FROM uaccount                          +|            | 
+                    |               |            |             |                    |     |   WHERE (uaccount.pguser = CURRENT_USER))) |            | 
+ regress_rls_schema | part_document | pp1r       | RESTRICTIVE | {regress_rls_dave} | ALL | (cid < 55)                                 |            | f
 (2 rows)
 
 -- viewpoint from regress_rls_bob
@@ -4821,6 +4821,130 @@ reset rls_test.blah;
 drop function rls_f(text);
 drop table rls_t, test_t;
 --
+-- Test BYPASSLEAKPROOF functionality
+--
+-- Test basic syntax and catalog behavior first
+CREATE TABLE bypass_test (
+    id int,
+    secret text
+);
+INSERT INTO bypass_test VALUES (1, 'secret1'), (2, 'secret2'), (3, 'public1');
+ALTER TABLE bypass_test ENABLE ROW LEVEL SECURITY;
+-- Create a policy with BYPASSLEAKPROOF
+CREATE POLICY bypass_policy ON bypass_test
+    FOR SELECT
+    USING (id <= 2)
+    BYPASSLEAKPROOF;
+-- Verify policy shows up in pg_policies with bypassleakproof = true
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'bypass_test';
+  policyname   | bypassleakproof 
+---------------+-----------------
+ bypass_policy | t
+(1 row)
+
+-- Test ALTER POLICY to disable bypassleakproof
+ALTER POLICY bypass_policy ON bypass_test NOBYPASSLEAKPROOF;
+-- Verify the change
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'bypass_test';
+  policyname   | bypassleakproof 
+---------------+-----------------
+ bypass_policy | f
+(1 row)
+
+-- Test ALTER POLICY to re-enable bypassleakproof
+ALTER POLICY bypass_policy ON bypass_test BYPASSLEAKPROOF;
+-- Verify the change again
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'bypass_test';
+  policyname   | bypassleakproof 
+---------------+-----------------
+ bypass_policy | t
+(1 row)
+
+DROP TABLE bypass_test;
+--
+-- Test BYPASSLEAKPROOF performance optimization
+-- Demonstrate that BYPASSLEAKPROOF affects optimizer behavior with non-leakproof functions
+--
+CREATE TABLE rls_snoop_test (
+    tenant_id int,
+    status text
+);
+INSERT INTO rls_snoop_test VALUES
+    (100, 'active'), (100, 'suspended'),
+    (200, 'active'), (200, 'suspended');
+-- Non-leakproof function that logs when called
+CREATE FUNCTION rls_snoop(val text) RETURNS boolean AS $$
+BEGIN
+  RAISE NOTICE 'rls_snoop called with: %', val;
+  RETURN val = 'suspended';
+END;
+$$ LANGUAGE plpgsql COST 0.000001;
+ALTER TABLE rls_snoop_test ENABLE ROW LEVEL SECURITY;
+CREATE USER rls_normal_user;
+CREATE USER rls_bypass_user;
+GRANT SELECT ON rls_snoop_test TO rls_normal_user, rls_bypass_user;
+-- Normal RLS policy vs BYPASSLEAKPROOF policy
+CREATE POLICY normal_pol ON rls_snoop_test FOR SELECT TO rls_normal_user USING (tenant_id = 200);
+CREATE POLICY bypass_pol ON rls_snoop_test FOR SELECT TO rls_bypass_user USING (tenant_id = 200) BYPASSLEAKPROOF;
+-- Demonstrate different function call patterns
+SET SESSION AUTHORIZATION rls_normal_user;
+SELECT COUNT(*) FROM rls_snoop_test WHERE rls_snoop(status);
+NOTICE:  rls_snoop called with: active
+NOTICE:  rls_snoop called with: suspended
+ count 
+-------
+     1
+(1 row)
+
+RESET SESSION AUTHORIZATION;
+SET SESSION AUTHORIZATION rls_bypass_user;
+SELECT COUNT(*) FROM rls_snoop_test WHERE rls_snoop(status);
+NOTICE:  rls_snoop called with: active
+NOTICE:  rls_snoop called with: suspended
+NOTICE:  rls_snoop called with: active
+NOTICE:  rls_snoop called with: suspended
+ count 
+-------
+     1
+(1 row)
+
+RESET SESSION AUTHORIZATION;
+-- Show different query plans
+SET SESSION AUTHORIZATION rls_normal_user;
+EXPLAIN (costs off) SELECT * FROM rls_snoop_test WHERE rls_snoop(status);
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Seq Scan on rls_snoop_test
+   Filter: ((tenant_id = 200) AND rls_snoop(status))
+(2 rows)
+
+RESET SESSION AUTHORIZATION;
+SET SESSION AUTHORIZATION rls_bypass_user;
+EXPLAIN (costs off) SELECT * FROM rls_snoop_test WHERE rls_snoop(status);
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Seq Scan on rls_snoop_test
+   Filter: (rls_snoop(status) AND (tenant_id = 200))
+(2 rows)
+
+RESET SESSION AUTHORIZATION;
+-- Test ALTER POLICY switching
+ALTER POLICY normal_pol ON rls_snoop_test BYPASSLEAKPROOF;
+SET SESSION AUTHORIZATION rls_normal_user;
+EXPLAIN (costs off) SELECT * FROM rls_snoop_test WHERE rls_snoop(status);
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Seq Scan on rls_snoop_test
+   Filter: (rls_snoop(status) AND (tenant_id = 200))
+(2 rows)
+
+RESET SESSION AUTHORIZATION;
+ALTER POLICY normal_pol ON rls_snoop_test NOBYPASSLEAKPROOF;
+-- Clean up
+DROP TABLE rls_snoop_test CASCADE;
+DROP USER rls_normal_user, rls_bypass_user;
+DROP FUNCTION rls_snoop;
+--
 -- Clean up objects
 --
 RESET SESSION AUTHORIZATION;
@@ -4879,3 +5003,5 @@ CREATE POLICY p1 ON rls_tbl_force USING (c1 = 5) WITH CHECK (c1 < 5);
 CREATE POLICY p2 ON rls_tbl_force FOR SELECT USING (c1 = 8);
 CREATE POLICY p3 ON rls_tbl_force FOR UPDATE USING (c1 = 8) WITH CHECK (c1 >= 5);
 CREATE POLICY p4 ON rls_tbl_force FOR DELETE USING (c1 = 8);
+-- Test policy with BYPASSLEAKPROOF for pg_dump
+CREATE POLICY p5 ON rls_tbl_force FOR SELECT USING (c1 > 0) BYPASSLEAKPROOF;

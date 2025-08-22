@@ -1441,7 +1441,8 @@ pg_policies| SELECT n.nspname AS schemaname,
             ELSE NULL::text
         END AS cmd,
     pg_get_expr(pol.polqual, pol.polrelid) AS qual,
-    pg_get_expr(pol.polwithcheck, pol.polrelid) AS with_check
+    pg_get_expr(pol.polwithcheck, pol.polrelid) AS with_check,
+    pol.polbypassleakproof AS bypassleakproof
    FROM ((pg_policy pol
      JOIN pg_class c ON ((c.oid = pol.polrelid)))
      LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace)));

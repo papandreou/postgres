@@ -2401,6 +2401,108 @@ drop function rls_f(text);
 drop table rls_t, test_t;
 
 --
+-- Test BYPASSLEAKPROOF functionality
+--
+
+-- Test basic syntax and catalog behavior first
+CREATE TABLE bypass_test (
+    id int,
+    secret text
+);
+
+INSERT INTO bypass_test VALUES (1, 'secret1'), (2, 'secret2'), (3, 'public1');
+
+ALTER TABLE bypass_test ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy with BYPASSLEAKPROOF
+CREATE POLICY bypass_policy ON bypass_test
+    FOR SELECT
+    USING (id <= 2)
+    BYPASSLEAKPROOF;
+
+-- Verify policy shows up in pg_policies with bypassleakproof = true
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'bypass_test';
+
+-- Test ALTER POLICY to disable bypassleakproof
+ALTER POLICY bypass_policy ON bypass_test NOBYPASSLEAKPROOF;
+
+-- Verify the change
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'bypass_test';
+
+-- Test ALTER POLICY to re-enable bypassleakproof
+ALTER POLICY bypass_policy ON bypass_test BYPASSLEAKPROOF;
+
+-- Verify the change again
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'bypass_test';
+
+DROP TABLE bypass_test;
+
+--
+-- Test BYPASSLEAKPROOF performance optimization
+-- Demonstrate that BYPASSLEAKPROOF affects optimizer behavior with non-leakproof functions
+--
+
+CREATE TABLE rls_snoop_test (
+    tenant_id int,
+    status text
+);
+
+INSERT INTO rls_snoop_test VALUES
+    (100, 'active'), (100, 'suspended'),
+    (200, 'active'), (200, 'suspended');
+
+-- Non-leakproof function that logs when called
+CREATE FUNCTION rls_snoop(val text) RETURNS boolean AS $$
+BEGIN
+  RAISE NOTICE 'rls_snoop called with: %', val;
+  RETURN val = 'suspended';
+END;
+$$ LANGUAGE plpgsql COST 0.000001;
+
+ALTER TABLE rls_snoop_test ENABLE ROW LEVEL SECURITY;
+
+CREATE USER rls_normal_user;
+CREATE USER rls_bypass_user;
+GRANT SELECT ON rls_snoop_test TO rls_normal_user, rls_bypass_user;
+
+-- Normal RLS policy vs BYPASSLEAKPROOF policy
+CREATE POLICY normal_pol ON rls_snoop_test FOR SELECT TO rls_normal_user USING (tenant_id = 200);
+CREATE POLICY bypass_pol ON rls_snoop_test FOR SELECT TO rls_bypass_user USING (tenant_id = 200) BYPASSLEAKPROOF;
+
+-- Demonstrate different function call patterns
+SET SESSION AUTHORIZATION rls_normal_user;
+SELECT COUNT(*) FROM rls_snoop_test WHERE rls_snoop(status);
+
+RESET SESSION AUTHORIZATION;
+SET SESSION AUTHORIZATION rls_bypass_user;
+SELECT COUNT(*) FROM rls_snoop_test WHERE rls_snoop(status);
+
+RESET SESSION AUTHORIZATION;
+
+-- Show different query plans
+SET SESSION AUTHORIZATION rls_normal_user;
+EXPLAIN (costs off) SELECT * FROM rls_snoop_test WHERE rls_snoop(status);
+
+RESET SESSION AUTHORIZATION;
+SET SESSION AUTHORIZATION rls_bypass_user;
+EXPLAIN (costs off) SELECT * FROM rls_snoop_test WHERE rls_snoop(status);
+
+RESET SESSION AUTHORIZATION;
+
+-- Test ALTER POLICY switching
+ALTER POLICY normal_pol ON rls_snoop_test BYPASSLEAKPROOF;
+SET SESSION AUTHORIZATION rls_normal_user;
+EXPLAIN (costs off) SELECT * FROM rls_snoop_test WHERE rls_snoop(status);
+
+RESET SESSION AUTHORIZATION;
+ALTER POLICY normal_pol ON rls_snoop_test NOBYPASSLEAKPROOF;
+
+-- Clean up
+DROP TABLE rls_snoop_test CASCADE;
+DROP USER rls_normal_user, rls_bypass_user;
+DROP FUNCTION rls_snoop;
+
+--
 -- Clean up objects
 --
 RESET SESSION AUTHORIZATION;
@@ -2432,3 +2534,6 @@ CREATE POLICY p1 ON rls_tbl_force USING (c1 = 5) WITH CHECK (c1 < 5);
 CREATE POLICY p2 ON rls_tbl_force FOR SELECT USING (c1 = 8);
 CREATE POLICY p3 ON rls_tbl_force FOR UPDATE USING (c1 = 8) WITH CHECK (c1 >= 5);
 CREATE POLICY p4 ON rls_tbl_force FOR DELETE USING (c1 = 8);
+
+-- Test policy with BYPASSLEAKPROOF for pg_dump
+CREATE POLICY p5 ON rls_tbl_force FOR SELECT USING (c1 > 0) BYPASSLEAKPROOF;
