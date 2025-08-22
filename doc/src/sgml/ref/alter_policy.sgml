@@ -126,8 +126,10 @@ ALTER POLICY <replaceable class="parameter">name</replaceable> ON <replaceable c
     <term><literal>NOBYPASSLEAKPROOF</literal></term>
     <listitem>
      <para>
-      These clauses alter whether the policy bypasses leakproof requirements.
-      See <xref linkend="sql-createpolicy"/> for details.
+      These clauses alter whether the policy bypasses leakproof requirements
+      for functions used in the USING expression. WITH CHECK expressions are
+      not affected. See <xref linkend="sql-createpolicy"/> for details about
+      the security implications of <literal>BYPASSLEAKPROOF</literal>.
      </para>
     </listitem>
    </varlistentry>

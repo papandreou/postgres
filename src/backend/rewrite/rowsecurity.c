@@ -774,6 +774,7 @@ add_security_quals(int rt_index,
 				if (policy->bypassleakproof)
 					*normalQuals = lappend(*normalQuals, qual);
 				else
+					/* list_append_unique deduplicates based on pointer equality, which is harmless here */
 					*securityQuals = list_append_unique(*securityQuals, qual);
 				*hasSubLinks |= policy->hassublinks;
 			}

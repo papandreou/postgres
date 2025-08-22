@@ -2537,3 +2537,142 @@ CREATE POLICY p4 ON rls_tbl_force FOR DELETE USING (c1 = 8);
 
 -- Test policy with BYPASSLEAKPROOF for pg_dump
 CREATE POLICY p5 ON rls_tbl_force FOR SELECT USING (c1 > 0) BYPASSLEAKPROOF;
+
+--
+-- Test ALTER POLICY preserves bypassleakproof when not specified
+--
+CREATE TABLE alter_bypass_test (id int, data text);
+ALTER TABLE alter_bypass_test ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy with BYPASSLEAKPROOF
+CREATE POLICY alter_bypass_policy ON alter_bypass_test
+    FOR SELECT USING (id > 0) BYPASSLEAKPROOF;
+
+-- Verify it's set to true
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'alter_bypass_test';
+
+-- ALTER the policy without mentioning BYPASSLEAKPROOF - should preserve the flag
+ALTER POLICY alter_bypass_policy ON alter_bypass_test TO public;
+
+-- Verify it's still true
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'alter_bypass_test';
+
+-- Now explicitly set it to false
+ALTER POLICY alter_bypass_policy ON alter_bypass_test NOBYPASSLEAKPROOF;
+
+-- Verify it's now false
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'alter_bypass_test';
+
+-- ALTER again without mentioning BYPASSLEAKPROOF - should preserve false
+ALTER POLICY alter_bypass_policy ON alter_bypass_test USING (id > 10);
+
+-- Verify it's still false
+SELECT policyname, bypassleakproof FROM pg_policies WHERE tablename = 'alter_bypass_test';
+
+DROP TABLE alter_bypass_test;
+
+--
+-- Test mixed permissive policies (bypass + non-bypass)
+--
+CREATE TABLE mixed_bypass_test (tenant_id int, data text);
+ALTER TABLE mixed_bypass_test ENABLE ROW LEVEL SECURITY;
+INSERT INTO mixed_bypass_test VALUES (1, 'data1'), (2, 'data2'), (3, 'data3');
+
+-- Function that logs when called (non-leakproof)
+CREATE FUNCTION mixed_test_func(val int) RETURNS boolean AS $$
+BEGIN
+  RAISE NOTICE 'mixed_test_func called with: %', val;
+  RETURN val <= 2;
+END;
+$$ LANGUAGE plpgsql COST 0.000001;
+
+CREATE USER mixed_test_user;
+GRANT SELECT ON mixed_bypass_test TO mixed_test_user;
+
+-- Create two permissive policies: one BYPASS, one not
+CREATE POLICY mixed_bypass_pol ON mixed_bypass_test
+    FOR SELECT TO mixed_test_user USING (mixed_test_func(tenant_id)) BYPASSLEAKPROOF;
+CREATE POLICY mixed_normal_pol ON mixed_bypass_test
+    FOR SELECT TO mixed_test_user USING (tenant_id = 1);
+
+-- With mixed permissive policies, the bypass effect should be nullified
+-- (all permissive quals are combined in security barrier)
+SET SESSION AUTHORIZATION mixed_test_user;
+SELECT COUNT(*) FROM mixed_bypass_test WHERE tenant_id <= 2;
+
+RESET SESSION AUTHORIZATION;
+DROP USER mixed_test_user;
+DROP FUNCTION mixed_test_func(int);
+DROP TABLE mixed_bypass_test;
+
+--
+-- Test restrictive BYPASSLEAKPROOF policies
+--
+CREATE TABLE restrictive_bypass_test (tenant_id int, status text);
+ALTER TABLE restrictive_bypass_test ENABLE ROW LEVEL SECURITY;
+INSERT INTO restrictive_bypass_test VALUES
+    (1, 'active'), (1, 'inactive'), (2, 'active'), (2, 'inactive');
+
+-- Function that logs when called (non-leakproof)
+CREATE FUNCTION restrictive_test_func(val text) RETURNS boolean AS $$
+BEGIN
+  RAISE NOTICE 'restrictive_test_func called with: %', val;
+  RETURN val = 'active';
+END;
+$$ LANGUAGE plpgsql COST 0.000001;
+
+CREATE USER restrictive_test_user;
+GRANT SELECT ON restrictive_bypass_test TO restrictive_test_user;
+
+-- Permissive policy allows tenant_id = 1
+CREATE POLICY restrictive_permissive_pol ON restrictive_bypass_test
+    FOR SELECT TO restrictive_test_user USING (tenant_id = 1);
+
+-- Restrictive policy with BYPASSLEAKPROOF should go to WHERE clause
+CREATE POLICY restrictive_bypass_pol ON restrictive_bypass_test
+    FOR SELECT TO restrictive_test_user AS RESTRICTIVE
+    USING (restrictive_test_func(status)) BYPASSLEAKPROOF;
+
+SET SESSION AUTHORIZATION restrictive_test_user;
+-- This should call the function for all visible rows
+SELECT COUNT(*) FROM restrictive_bypass_test WHERE tenant_id = 1;
+
+RESET SESSION AUTHORIZATION;
+DROP USER restrictive_test_user;
+DROP FUNCTION restrictive_test_func(text);
+DROP TABLE restrictive_bypass_test;
+
+--
+-- Test BYPASSLEAKPROOF has no effect on WITH CHECK
+--
+CREATE TABLE with_check_test (id int, status text);
+ALTER TABLE with_check_test ENABLE ROW LEVEL SECURITY;
+
+-- Function that logs when called (non-leakproof)
+CREATE FUNCTION with_check_test_func(val text) RETURNS boolean AS $$
+BEGIN
+  RAISE NOTICE 'with_check_test_func called with: %', val;
+  RETURN val IN ('allowed', 'permitted');
+END;
+$$ LANGUAGE plpgsql COST 0.000001;
+
+CREATE USER with_check_test_user;
+GRANT INSERT, SELECT ON with_check_test TO with_check_test_user;
+
+-- Policy with BYPASSLEAKPROOF - should not affect WITH CHECK enforcement
+CREATE POLICY with_check_pol ON with_check_test
+    FOR INSERT TO with_check_test_user
+    WITH CHECK (with_check_test_func(status)) BYPASSLEAKPROOF;
+
+SET SESSION AUTHORIZATION with_check_test_user;
+
+-- This should succeed
+INSERT INTO with_check_test VALUES (1, 'allowed');
+
+-- This should fail with policy violation
+INSERT INTO with_check_test VALUES (2, 'forbidden');
+
+RESET SESSION AUTHORIZATION;
+DROP USER with_check_test_user;
+DROP FUNCTION with_check_test_func(text);
+DROP TABLE with_check_test;

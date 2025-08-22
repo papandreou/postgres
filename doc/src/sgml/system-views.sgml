@@ -2315,6 +2315,15 @@ SELECT * FROM pg_locks pl LEFT JOIN pg_prepared_xacts ppx
        queries that attempt to add rows to this table
       </para></entry>
      </row>
+
+     <row>
+      <entry role="catalog_table_entry"><para role="column_definition">
+       <structfield>bypassleakproof</structfield> <type>boolean</type>
+      </para>
+      <para>
+       True if the policy bypasses leakproof function restrictions for its USING expression
+      </para></entry>
+     </row>
     </tbody>
    </tgroup>
   </table>

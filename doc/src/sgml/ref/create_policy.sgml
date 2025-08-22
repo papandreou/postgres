@@ -224,17 +224,23 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
     <term><literal>BYPASSLEAKPROOF</literal></term>
     <listitem>
      <para>
-      If specified, this policy's USING expression will be treated as a regular
-      WHERE clause rather than a security barrier. This allows the optimizer to
-      use non-leakproof functions and operators when processing queries that
-      involve this policy, potentially improving performance by enabling
-      index scans and other optimizations.
+      If specified, this policy's USING expression is applied as a regular
+      WHERE clause rather than as a security barrier. This allows the optimizer
+      to use non-leakproof functions and operators in queries involving this
+      policy, which can enable index scans and other optimizations.
      </para>
      <para>
-      <emphasis>Warning:</emphasis> This option should only be used when you trust
-      the functions and operators in your queries not to leak information about
-      rows that should be filtered out by this policy. Using this option
-      inappropriately may allow information disclosure.
+      This option affects only the USING expression. WITH CHECK expressions
+      (including USING expressions used as WITH CHECK) are enforced normally
+      and are not affected by <literal>BYPASSLEAKPROOF</literal>.
+     </para>
+     <para>
+      <emphasis>Warning:</emphasis> <literal>BYPASSLEAKPROOF</literal> disables
+      the usual security-barrier ordering for the USING expression. If
+      non-leakproof functions are involved, this can permit information leakage
+      about rows that the policy would otherwise filter. Use only when you
+      understand and accept this risk. See <xref linkend="xfunc-leakproof"/>
+      and <xref linkend="ddl-rowsecurity"/> for more information.
      </para>
     </listitem>
    </varlistentry>

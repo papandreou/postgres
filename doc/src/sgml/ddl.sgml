@@ -2649,10 +2649,30 @@ GRANT SELECT (col1), UPDATE (col1) ON mytable TO miriam_rw;
    not return <literal>true</literal> will not be processed.  Separate expressions
    may be specified to provide independent control over the rows which are
    visible and the rows which are allowed to be modified.  Policy
-   expressions are run as part of the query and with the privileges of the
-   user running the query, although security-definer functions can be used
-   to access data not available to the calling user.
-  </para>
+     expressions are run as part of the query and with the privileges of the
+  user running the query, although security-definer functions can be used
+  to access data not available to the calling user.
+ </para>
+
+ <para>
+  The normal security-barrier behavior described above can be bypassed for
+  individual policies by specifying <literal>BYPASSLEAKPROOF</literal> when
+  creating the policy. This causes the policy's USING expression to be
+  treated as a regular WHERE clause rather than a security barrier, allowing
+  non-leakproof functions to be optimized and potentially executed before
+  the policy check. This can improve performance but may allow information
+  leakage about rows that would otherwise be filtered. See
+  <xref linkend="xfunc-leakproof"/> for more information about leakproof
+  functions.
+ </para>
+
+ <para>
+  If any permissive policy on a relation is not marked
+  <literal>BYPASSLEAKPROOF</literal>, then all permissive policies are
+  enforced as security barriers regardless of their individual
+  <literal>BYPASSLEAKPROOF</literal> settings. This ensures consistent
+  security behavior when policies are combined.
+ </para>
 
   <para>
    Superusers and roles with the <literal>BYPASSRLS</literal> attribute always

@@ -1040,12 +1040,12 @@ AlterPolicy(AlterPolicyStmt *stmt)
 		}
 	}
 
-	/*
-	 * FIXME: I guess we should only do this if the keyword was actually
-	 * present
-	 */
-	replaces[Anum_pg_policy_polbypassleakproof - 1] = true;
-	values[Anum_pg_policy_polbypassleakproof - 1] = BoolGetDatum(stmt->bypassleakproof);
+	/* Only update bypassleakproof if the clause was specified */
+	if (stmt->bypassleakproof_given)
+	{
+		replaces[Anum_pg_policy_polbypassleakproof - 1] = true;
+		values[Anum_pg_policy_polbypassleakproof - 1] = BoolGetDatum(stmt->bypassleakproof);
+	}
 
 	new_tuple = heap_modify_tuple(policy_tuple,
 								  RelationGetDescr(pg_policy_rel),

@@ -3070,6 +3070,7 @@ typedef struct CreatePolicyStmt
 	Node	   *with_check;		/* the policy's WITH CHECK condition. */
 	bool		bypassleakproof;	/* does the policy bypass the leakproof
 									 * requirement for functions? */
+	bool		bypassleakproof_given;	/* whether BYPASSLEAKPROOF/NOBYPASSLEAKPROOF appeared */
 } CreatePolicyStmt;
 
 /*----------------------
@@ -3086,6 +3087,7 @@ typedef struct AlterPolicyStmt
 	Node	   *with_check;		/* the policy's WITH CHECK condition. */
 	bool		bypassleakproof;	/* does the policy bypass the leakproof
 									 * requirement for functions? */
+	bool		bypassleakproof_given;	/* whether BYPASSLEAKPROOF/NOBYPASSLEAKPROOF appeared */
 } AlterPolicyStmt;
 
 /*----------------------

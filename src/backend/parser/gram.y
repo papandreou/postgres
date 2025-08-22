@@ -268,6 +268,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	struct KeyAction *keyaction;
 	ReturningClause *retclause;
 	ReturningOptionKind retoptionkind;
+	struct { bool given; bool val; } bypassopt;
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -395,7 +396,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <boolean> RowSecurityDefaultPermissive
 %type <node>	RowSecurityOptionalWithCheck RowSecurityOptionalExpr
 %type <list>	RowSecurityDefaultToRole RowSecurityOptionalToRole
-%type <boolean>	RowSecurityOptionalBypassleakproof
+%type <bypassopt>	RowSecurityOptionalBypassleakproof
 
 %type <str>		iso_level opt_encoding
 %type <rolespec> grantee
@@ -5953,7 +5954,8 @@ CreatePolicyStmt:
 					n->roles = $8;
 					n->qual = $9;
 					n->with_check = $10;
-					n->bypassleakproof = $11;
+					n->bypassleakproof = $11.val;
+					n->bypassleakproof_given = $11.given;
 					$$ = (Node *) n;
 				}
 		;
@@ -5970,7 +5972,8 @@ AlterPolicyStmt:
 					n->roles = $6;
 					n->qual = $7;
 					n->with_check = $8;
-					n->bypassleakproof = $9;
+					n->bypassleakproof = $9.val;
+					n->bypassleakproof_given = $9.given;
 					$$ = (Node *) n;
 				}
 		;
@@ -6016,13 +6019,19 @@ RowSecurityDefaultPermissive:
 RowSecurityOptionalBypassleakproof:
 			BYPASSLEAKPROOF
 				{
-					$$ = true;
+					$$.given = true;
+					$$.val = true;
 				}
 			| NOBYPASSLEAKPROOF
 				{
-					$$ = false;
+					$$.given = true;
+					$$.val = false;
 				}
-			| /* EMPTY */			{ $$ = false; }
+			| /* EMPTY */
+				{
+					$$.given = false;
+					$$.val = false;
+				}
 		;
 
 RowSecurityDefaultForCmd:
