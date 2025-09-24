@@ -2242,8 +2242,9 @@ fireRIRrules(Query *parsetree, List *activeRIRs)
 
 				/*
 				 * get_row_security_policies just passed back securityQuals,
-				 * withCheckOptions, and/or normalQuals, and there were SubLinks,
-				 * make sure we lock any relations which are referenced.
+				 * withCheckOptions, and/or normalQuals, and there were
+				 * SubLinks, make sure we lock any relations which are
+				 * referenced.
 				 *
 				 * These locks would normally be acquired by the parser, but
 				 * these quals are added post-parsing.
@@ -2312,7 +2313,7 @@ fireRIRrules(Query *parsetree, List *activeRIRs)
 				whereClause = parsetree->jointree->quals;
 				if (whereClause)
 					parsetree->jointree->quals = (Node *) make_and_qual((Expr *) whereClause,
-																		 (Expr *) newQual);
+																		(Expr *) newQual);
 				else
 					parsetree->jointree->quals = newQual;
 			}

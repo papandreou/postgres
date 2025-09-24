@@ -4329,7 +4329,7 @@ getPolicies(Archive *fout, TableInfo tblinfo[], int numTables)
 		appendPQExpBufferStr(query, "pol.polpermissive, ");
 	else
 		appendPQExpBufferStr(query, "'t' as polpermissive, ");
-	if (fout->remoteVersion >= 180000)  /* polbypassleakproof added in v18 */
+	if (fout->remoteVersion >= 180000)	/* polbypassleakproof added in v18 */
 		appendPQExpBufferStr(query, "pol.polbypassleakproof, ");
 	else
 		appendPQExpBufferStr(query, "'f' as polbypassleakproof, ");

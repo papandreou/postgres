@@ -737,7 +737,7 @@ add_security_quals(int rt_index,
 			if (policy->bypassleakproof)
 			{
 				bypass_permissive_quals = lappend(bypass_permissive_quals,
-												   copyObject(policy->qual));
+												  copyObject(policy->qual));
 			}
 			else
 			{
@@ -774,17 +774,21 @@ add_security_quals(int rt_index,
 				if (policy->bypassleakproof)
 					*normalQuals = lappend(*normalQuals, qual);
 				else
-					/* list_append_unique deduplicates based on pointer equality, which is harmless here */
+
+					/*
+					 * list_append_unique deduplicates based on pointer
+					 * equality, which is harmless here
+					 */
 					*securityQuals = list_append_unique(*securityQuals, qual);
 				*hasSubLinks |= policy->hassublinks;
 			}
 		}
 
 		/*
-		 * Handle the combined permissive qual. If all permissive policies
-		 * are BYPASSLEAKPROOF, add the combined qual to normalQuals.
-		 * Otherwise, combine all permissive quals (both bypass and regular)
-		 * and add to securityQuals.
+		 * Handle the combined permissive qual. If all permissive policies are
+		 * BYPASSLEAKPROOF, add the combined qual to normalQuals. Otherwise,
+		 * combine all permissive quals (both bypass and regular) and add to
+		 * securityQuals.
 		 */
 		if (all_permissive_bypass && bypass_permissive_quals != NIL)
 		{
@@ -799,8 +803,11 @@ add_security_quals(int rt_index,
 		}
 		else
 		{
-			/* Some non-bypass policies exist - combine all and add to security quals */
-			List *all_permissive_quals = list_concat(permissive_quals, bypass_permissive_quals);
+			/*
+			 * Some non-bypass policies exist - combine all and add to
+			 * security quals
+			 */
+			List	   *all_permissive_quals = list_concat(permissive_quals, bypass_permissive_quals);
 
 			if (list_length(all_permissive_quals) == 1)
 				rowsec_expr = (Expr *) linitial(all_permissive_quals);
