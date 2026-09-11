@@ -478,6 +478,47 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 		return result;
 	}
+	/*
+	 * An explicit cast to/from a distinct type is also allowed transitively
+	 * through its base type (see the matching logic in can_coerce_type()),
+	 * even though find_coercion_pathway() found nothing direct.  This is
+	 * deliberately restricted to COERCION_EXPLICIT.
+	 */
+	if (ccontext == COERCION_EXPLICIT)
+	{
+		if (get_typtype(targetTypeId) == TYPTYPE_DISTINCT)
+		{
+			Oid			baseTypeId = getDirectBaseType(targetTypeId);
+
+			if (baseTypeId != targetTypeId &&
+				can_coerce_type(1, &inputTypeId, &baseTypeId, ccontext))
+			{
+				RelabelType *r;
+
+				node = coerce_type(pstate, node, inputTypeId, baseTypeId, -1,
+									ccontext, cformat, location);
+				r = makeRelabelType((Expr *) node, targetTypeId, -1,
+									InvalidOid, cformat);
+				r->location = location;
+				return (Node *) r;
+			}
+		}
+		if (get_typtype(inputTypeId) == TYPTYPE_DISTINCT)
+		{
+			Oid			baseTypeId = getDirectBaseType(inputTypeId);
+
+			if (baseTypeId != inputTypeId &&
+				can_coerce_type(1, &baseTypeId, &targetTypeId, ccontext))
+			{
+				RelabelType *r = makeRelabelType((Expr *) node, baseTypeId, -1,
+												 InvalidOid, cformat);
+
+				r->location = location;
+				return coerce_type(pstate, (Node *) r, baseTypeId, targetTypeId,
+									targetTypeMod, ccontext, cformat, location);
+			}
+		}
+	}
 	if (inputTypeId == RECORDOID &&
 		ISCOMPLEX(targetTypeId))
 	{
@@ -603,6 +644,33 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 										 &funcId);
 		if (pathtype != COERCION_PATH_NONE)
 			continue;
+
+		/*
+		 * An explicit cast to/from a distinct type is also allowed
+		 * transitively through its base type (e.g. "1::answer_id", where 1
+		 * is int4 but answer_id's base type is int8), even though there's
+		 * no direct pg_cast entry.  This deliberately only applies at
+		 * COERCION_EXPLICIT: assignment-context coercion (INSERT/UPDATE)
+		 * must keep requiring the value to already be exactly the base
+		 * type, or it would silently defeat the whole point of the type.
+		 */
+		if (ccontext == COERCION_EXPLICIT)
+		{
+			Oid			baseTypeId;
+
+			if (get_typtype(targetTypeId) == TYPTYPE_DISTINCT)
+			{
+				baseTypeId = getDirectBaseType(targetTypeId);
+				if (can_coerce_type(1, &inputTypeId, &baseTypeId, ccontext))
+					continue;
+			}
+			if (get_typtype(inputTypeId) == TYPTYPE_DISTINCT)
+			{
+				baseTypeId = getDirectBaseType(inputTypeId);
+				if (can_coerce_type(1, &baseTypeId, &targetTypeId, ccontext))
+					continue;
+			}
+		}
 
 		/*
 		 * If input is RECORD and target is a composite type, assume we can
@@ -3177,8 +3245,13 @@ find_coercion_pathway(Oid targetTypeId, Oid sourceTypeId,
 	if (sourceTypeId == targetTypeId)
 		return COERCION_PATH_RELABELTYPE;
 
-	/* Distinct types are castable AS ASSIGNMENT to and from their base type */
-	if (ccontext >= COERCION_ASSIGNMENT
+	/*
+	 * Distinct types are castable to and from their base type, but only via
+	 * an explicit cast -- unlike domains, this is deliberately NOT allowed
+	 * at assignment context, so that e.g. INSERT/UPDATE can't silently slide
+	 * a plain (unwrapped) base-type value into a distinct-typed column.
+	 */
+	if (ccontext == COERCION_EXPLICIT
 		&& ((OidIsValid(sourceTypeId)
 			 && get_typtype(sourceTypeId) == TYPTYPE_DISTINCT
 			 && getDirectBaseType(sourceTypeId) == targetTypeId)
