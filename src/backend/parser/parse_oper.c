@@ -741,6 +741,30 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		/* otherwise, binary operator */
 		ltypeId = exprType(ltree);
 		rtypeId = exprType(rtree);
+
+		/*
+		 * Distinct types (CREATE TYPE ... AS basetype) intentionally have no
+		 * operators of their own, and are not implicitly coercible to their
+		 * base type, so that values of two distinct types sharing a base
+		 * type can't be silently mixed.  But comparing (or otherwise
+		 * operating on) two values of the *same* distinct type is safe and
+		 * expected to work, so relabel both operands down to their common
+		 * base type -- as if the user had written an explicit cast -- before
+		 * doing normal operator resolution.
+		 */
+		if (ltypeId == rtypeId && get_typtype(ltypeId) == TYPTYPE_DISTINCT)
+		{
+			Oid			baseTypeId = getDirectBaseType(ltypeId);
+
+			ltree = coerce_type(pstate, ltree, ltypeId, baseTypeId, -1,
+								 COERCION_EXPLICIT, COERCE_IMPLICIT_CAST,
+								 location);
+			rtree = coerce_type(pstate, rtree, rtypeId, baseTypeId, -1,
+								 COERCION_EXPLICIT, COERCE_IMPLICIT_CAST,
+								 location);
+			ltypeId = rtypeId = baseTypeId;
+		}
+
 		tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
 	}
 
