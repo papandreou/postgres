@@ -1341,6 +1341,7 @@ get_type_func_class(Oid typid, Oid *base_typeid)
 		case TYPTYPE_RANGE:
 		case TYPTYPE_MULTIRANGE:
 			return TYPEFUNC_SCALAR;
+		case TYPTYPE_DISTINCT:
 		case TYPTYPE_DOMAIN:
 			*base_typeid = typid = getBaseType(typid);
 			if (get_typtype(typid) == TYPTYPE_COMPOSITE)

@@ -2246,6 +2246,7 @@ check_sql_stmt_retval(List *queryTreeList,
 	fn_typtype = get_typtype(rettype);
 
 	if (fn_typtype == TYPTYPE_BASE ||
+		fn_typtype == TYPTYPE_DISTINCT ||
 		fn_typtype == TYPTYPE_DOMAIN ||
 		fn_typtype == TYPTYPE_ENUM ||
 		fn_typtype == TYPTYPE_RANGE ||

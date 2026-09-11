@@ -3328,6 +3328,7 @@ typedef struct CreateDomainStmt
 	TypeName   *typeName;		/* the base type */
 	CollateClause *collClause;	/* untransformed COLLATE spec, if any */
 	List	   *constraints;	/* constraints (list of Constraint nodes) */
+	bool		distinct_type;	/* create distinct type rather than domain */
 } CreateDomainStmt;
 
 /* ----------------------

@@ -280,6 +280,7 @@ MAKE_SYSCACHE(TYPENAMENSP, pg_type_typname_nsp_index, 64);
 #define  TYPTYPE_BASE		'b' /* base type (ordinary scalar type) */
 #define  TYPTYPE_COMPOSITE	'c' /* composite (e.g., table's rowtype) */
 #define  TYPTYPE_DOMAIN		'd' /* domain over another type */
+#define  TYPTYPE_DISTINCT	'D' /* distinct type based on another type */
 #define  TYPTYPE_ENUM		'e' /* enumerated type */
 #define  TYPTYPE_MULTIRANGE	'm' /* multirange type */
 #define  TYPTYPE_PSEUDO		'p' /* pseudo-type */

@@ -694,7 +694,7 @@ RemoveTypeById(Oid typeOid)
 
 /*
  * DefineDomain
- *		Registers a new domain.
+ *		Registers a new domain or distinct type.
  */
 ObjectAddress
 DefineDomain(ParseState *pstate, CreateDomainStmt *stmt)
@@ -780,14 +780,24 @@ DefineDomain(ParseState *pstate, CreateDomainStmt *stmt)
 	if (typtype != TYPTYPE_BASE &&
 		typtype != TYPTYPE_COMPOSITE &&
 		typtype != TYPTYPE_DOMAIN &&
+		typtype != TYPTYPE_DISTINCT &&
 		typtype != TYPTYPE_ENUM &&
 		typtype != TYPTYPE_RANGE &&
 		typtype != TYPTYPE_MULTIRANGE)
-		ereport(ERROR,
-				(errcode(ERRCODE_DATATYPE_MISMATCH),
-				 errmsg("\"%s\" is not a valid base type for a domain",
-						TypeNameToString(stmt->typeName)),
-				 parser_errposition(pstate, stmt->typeName->location)));
+	{
+		if (stmt->distinct_type)
+			ereport(ERROR,
+					(errcode(ERRCODE_DATATYPE_MISMATCH),
+					 errmsg("\"%s\" is not a valid base type for a distinct type",
+							TypeNameToString(stmt->typeName)),
+					 parser_errposition(pstate, stmt->typeName->location)));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_DATATYPE_MISMATCH),
+					 errmsg("\"%s\" is not a valid base type for a domain",
+							TypeNameToString(stmt->typeName)),
+					 parser_errposition(pstate, stmt->typeName->location)));
+	}
 
 	aclresult = object_aclcheck(TypeRelationId, basetypeoid, GetUserId(), ACL_USAGE);
 	if (aclresult != ACLCHECK_OK)
@@ -1072,7 +1082,7 @@ DefineDomain(ParseState *pstate, CreateDomainStmt *stmt)
 				   0,			/* relation kind (ditto) */
 				   GetUserId(), /* owner's ID */
 				   internalLength,	/* internal size */
-				   TYPTYPE_DOMAIN,	/* type-type (domain type) */
+				   stmt->distinct_type ? TYPTYPE_DISTINCT : TYPTYPE_DOMAIN,	/* type-type (distinct type or domain) */
 				   category,	/* type-category */
 				   false,		/* domain types are never preferred */
 				   delimiter,	/* array element delimiter */

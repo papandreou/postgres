@@ -2021,6 +2021,7 @@ build_datatype(HeapTuple typeTup, int32 typmod,
 		case TYPTYPE_COMPOSITE:
 			typ->ttype = PLPGSQL_TTYPE_REC;
 			break;
+		case TYPTYPE_DISTINCT:
 		case TYPTYPE_DOMAIN:
 			if (type_is_rowtype(typeStruct->typbasetype))
 				typ->ttype = PLPGSQL_TTYPE_REC;

@@ -3917,7 +3917,7 @@ map_sql_typecoll_to_xmlschema_types(List *tupdesc_list)
 		}
 	}
 
-	/* add base types of domains */
+	/* add base types of distinct types and domains */
 	foreach(cell0, uniquetypes)
 	{
 		Oid			typid = lfirst_oid(cell0);
@@ -4100,7 +4100,7 @@ map_sql_type_to_xmlschema_type(Oid typeoid, int typmod)
 				break;
 
 			default:
-				if (get_typtype(typeoid) == TYPTYPE_DOMAIN)
+				if (get_typtype(typeoid) == TYPTYPE_DISTINCT || get_typtype(typeoid) == TYPTYPE_DOMAIN)
 				{
 					Oid			base_typeoid;
 					int32		base_typmod = -1;

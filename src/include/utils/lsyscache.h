@@ -195,6 +195,7 @@ extern const SubscriptRoutines *getSubscriptingRoutines(Oid typid,
 														Oid *typelemp);
 extern Oid	getBaseType(Oid typid);
 extern Oid	getBaseTypeAndTypmod(Oid typid, int32 *typmod);
+extern Oid	getDirectBaseType(Oid typid);
 extern int32 get_typavgwidth(Oid typid, int32 typmod);
 extern int32 get_attavgwidth(Oid relid, AttrNumber attnum);
 extern bool get_attstatsslot(AttStatsSlot *sslot, HeapTuple statstuple,

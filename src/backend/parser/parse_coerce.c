@@ -3168,13 +3168,23 @@ find_coercion_pathway(Oid targetTypeId, Oid sourceTypeId,
 	*funcid = InvalidOid;
 
 	/* Perhaps the types are domains; if so, look at their base types */
-	if (OidIsValid(sourceTypeId))
+	if (OidIsValid(sourceTypeId) && get_typtype(sourceTypeId) == TYPTYPE_DOMAIN)
 		sourceTypeId = getBaseType(sourceTypeId);
-	if (OidIsValid(targetTypeId))
+	if (OidIsValid(targetTypeId) && get_typtype(targetTypeId) == TYPTYPE_DOMAIN)
 		targetTypeId = getBaseType(targetTypeId);
 
 	/* Domains are always coercible to and from their base type */
 	if (sourceTypeId == targetTypeId)
+		return COERCION_PATH_RELABELTYPE;
+
+	/* Distinct types are castable AS ASSIGNMENT to and from their base type */
+	if (ccontext >= COERCION_ASSIGNMENT
+		&& ((OidIsValid(sourceTypeId)
+			 && get_typtype(sourceTypeId) == TYPTYPE_DISTINCT
+			 && getDirectBaseType(sourceTypeId) == targetTypeId)
+			|| (OidIsValid(targetTypeId)
+				&& get_typtype(targetTypeId) == TYPTYPE_DISTINCT
+				&& getDirectBaseType(targetTypeId) == sourceTypeId)))
 		return COERCION_PATH_RELABELTYPE;
 
 	/* Reject all cases of casting something else to/from "internal" */

@@ -292,6 +292,7 @@ static void dumpBaseType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpEnumType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpRangeType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpUndefinedType(Archive *fout, const TypeInfo *tyinfo);
+static void dumpDistinctType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpDomain(Archive *fout, const TypeInfo *tyinfo);
 static void dumpCompositeType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpCompositeTypeColComments(Archive *fout, const TypeInfo *tyinfo,
@@ -12011,6 +12012,8 @@ dumpType(Archive *fout, const TypeInfo *tyinfo)
 	/* Dump out in proper style */
 	if (tyinfo->typtype == TYPTYPE_BASE)
 		dumpBaseType(fout, tyinfo);
+	else if (tyinfo->typtype == TYPTYPE_DISTINCT)
+		dumpDistinctType(fout, tyinfo);
 	else if (tyinfo->typtype == TYPTYPE_DOMAIN)
 		dumpDomain(fout, tyinfo);
 	else if (tyinfo->typtype == TYPTYPE_COMPOSITE)
@@ -12635,6 +12638,72 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 	destroyPQExpBuffer(query);
 	pg_free(qtypname);
 	pg_free(qualtypname);
+}
+
+/*
+ * dumpDistinctType
+ *	  writes out to fout the queries to recreate a user-defined distinct type
+ */
+static void
+dumpDistinctType(Archive *fout, const TypeInfo *tyinfo)
+{
+	PQExpBuffer q = createPQExpBuffer();
+	PQExpBuffer delq = createPQExpBuffer();
+	PQExpBuffer query = createPQExpBuffer();
+	PGresult   *res;
+	char	   *qtypname;
+	char	   *qualtypname;
+	char	   *typdefn;
+
+	printfPQExpBuffer(query,
+					  "SELECT pg_catalog.format_type(typbasetype, typtypmod) AS typdefn "
+					  "FROM pg_catalog.pg_type "
+					  "WHERE oid = '%u'::pg_catalog.oid",
+					  tyinfo->dobj.catId.oid);
+
+	res = ExecuteSqlQueryForSingleRow(fout, query->data);
+
+	typdefn = PQgetvalue(res, 0, PQfnumber(res, "typdefn"));
+
+	qtypname = pg_strdup(fmtId(tyinfo->dobj.name));
+	qualtypname = pg_strdup(fmtQualifiedDumpable(tyinfo));
+
+	appendPQExpBuffer(q,
+					  "CREATE TYPE %s AS %s;\n",
+					  qualtypname,
+					  typdefn);
+
+	PQclear(res);
+
+	appendPQExpBuffer(delq, "DROP TYPE %s;\n", qualtypname);
+
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
+		ArchiveEntry(fout, tyinfo->dobj.catId, tyinfo->dobj.dumpId,
+					 ARCHIVE_OPTS(.tag = tyinfo->dobj.name,
+								  .namespace = tyinfo->dobj.namespace->dobj.name,
+								  .owner = tyinfo->rolname,
+								  .description = "TYPE",
+								  .section = SECTION_PRE_DATA,
+								  .createStmt = q->data,
+								  .dropStmt = delq->data));
+
+	/* Dump Type Comments */
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
+		dumpComment(fout, "TYPE", qtypname,
+					tyinfo->dobj.namespace->dobj.name, tyinfo->rolname,
+					tyinfo->dobj.catId, 0, tyinfo->dobj.dumpId);
+
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_ACL)
+		dumpACL(fout, tyinfo->dobj.dumpId, InvalidDumpId, "TYPE",
+				qtypname, NULL,
+				tyinfo->dobj.namespace->dobj.name,
+				NULL, tyinfo->rolname, &tyinfo->dacl);
+
+	free(qtypname);
+	free(qualtypname);
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+	destroyPQExpBuffer(query);
 }
 
 /*

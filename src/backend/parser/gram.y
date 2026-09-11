@@ -11880,8 +11880,18 @@ CreateDomainStmt:
 
 					n->domainname = $3;
 					n->typeName = $5;
+					n->distinct_type = false;
 					SplitColQualList($6, &n->constraints, &n->collClause,
 									 yyscanner);
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name AS Typename
+				{
+					CreateDomainStmt *n = makeNode(CreateDomainStmt);
+
+					n->domainname = $3;
+					n->typeName = $5;
+					n->distinct_type = true;
 					$$ = (Node *) n;
 				}
 		;
@@ -18254,7 +18264,6 @@ unreserved_keyword:
 			| ENCODING
 			| ENCRYPTED
 			| ENFORCED
-			| ENUM_P
 			| ERROR_P
 			| ESCAPE
 			| EVENT
@@ -18392,7 +18401,6 @@ unreserved_keyword:
 			| PUBLICATION
 			| QUOTE
 			| QUOTES
-			| RANGE
 			| READ
 			| REASSIGN
 			| RECURSIVE
@@ -18528,6 +18536,7 @@ col_name_keyword:
 			| COALESCE
 			| DEC
 			| DECIMAL_P
+			| ENUM_P
 			| EXISTS
 			| EXTRACT
 			| FLOAT_P
@@ -18560,6 +18569,7 @@ col_name_keyword:
 			| OVERLAY
 			| POSITION
 			| PRECISION
+			| RANGE
 			| REAL
 			| ROW
 			| SETOF

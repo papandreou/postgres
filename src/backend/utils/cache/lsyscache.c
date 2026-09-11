@@ -2828,7 +2828,7 @@ get_typdefault(Oid typid)
 
 /*
  * getBaseType
- *		If the given type is a domain, return its base type;
+ *		If the given type is a distinct type or domain, return its base type;
  *		otherwise return the type's own OID.
  */
 Oid
@@ -2841,7 +2841,7 @@ getBaseType(Oid typid)
 
 /*
  * getBaseTypeAndTypmod
- *		If the given type is a domain, return its base type and typmod;
+ *		If the given type is a distinct type or domain, return its base type and typmod;
  *		otherwise return the type's own OID, and leave *typmod unchanged.
  *
  * Note that the "applied typmod" should be -1 for every domain level
@@ -2863,9 +2863,9 @@ getBaseTypeAndTypmod(Oid typid, int32 *typmod)
 		if (!HeapTupleIsValid(tup))
 			elog(ERROR, "cache lookup failed for type %u", typid);
 		typTup = (Form_pg_type) GETSTRUCT(tup);
-		if (typTup->typtype != TYPTYPE_DOMAIN)
+		if (typTup->typtype != TYPTYPE_DISTINCT && typTup->typtype != TYPTYPE_DOMAIN)
 		{
-			/* Not a domain, so done */
+			/* Not a distinct type or domain, so done */
 			ReleaseSysCache(tup);
 			break;
 		}
@@ -2877,6 +2877,30 @@ getBaseTypeAndTypmod(Oid typid, int32 *typmod)
 		ReleaseSysCache(tup);
 	}
 
+	return typid;
+}
+
+/*
+ * getDirectBaseType
+ *		If the given type is a distinct type or domain, return its direct base type;
+ *		otherwise return the type's own OID.
+ */
+Oid
+getDirectBaseType(Oid typid)
+{
+	HeapTuple	tup;
+	Form_pg_type typTup;
+
+	tup = SearchSysCache(TYPEOID,
+						 ObjectIdGetDatum(typid),
+						 0, 0, 0);
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for type %u", typid);
+	typTup = (Form_pg_type) GETSTRUCT(tup);
+	if (typTup->typtype == TYPTYPE_DISTINCT || typTup->typtype == TYPTYPE_DOMAIN)
+		typid = typTup->typbasetype;
+		
+	ReleaseSysCache(tup);
 	return typid;
 }
 
